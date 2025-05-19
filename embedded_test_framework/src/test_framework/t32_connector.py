@@ -101,3 +101,40 @@ class T32Connector:
         else:
             print("T32_Exit successful.")
         self._is_connected = False
+
+    def run_cmm_script(self, script_path: str, args: list = None) -> int:
+        """
+        Executes a CMM script.
+        :param script_path: Absolute or relative path to the .cmm script.
+                            T32 resolves relative paths based on its own CWD or settings.
+                            It's often best to provide absolute paths from Python.
+        :param args: A list of string arguments for the script.
+        :return: Status code from T32_ExecuteScript (0 for success).
+        """
+        if not self.is_connected:
+            print("Error: Not connected to Trace32. Cannot execute script.")
+            return -1 # Or raise an exception
+
+        # T32_ExecuteScript(const char *pszPathName, const char *pszArgs[])
+        self.t32_lib.T32_ExecuteScript.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
+        self.t32_lib.T32_ExecuteScript.restype = ctypes.c_int
+
+        script_path_bytes = script_path.encode('ascii')
+        
+        c_args = None
+        if args:
+            # Convert Python list of strings to C-style array of char pointers
+            c_args_arr = (ctypes.c_char_p * (len(args) + 1))() # +1 for NULL terminator
+            for i, arg in enumerate(args):
+                c_args_arr[i] = arg.encode('ascii')
+            c_args_arr[len(args)] = None # Null-terminate the array
+            c_args = c_args_arr
+        
+        print(f"Executing CMM script: {script_path} with args: {args}")
+        status = self.t32_lib.T32_ExecuteScript(script_path_bytes, c_args)
+        
+        if status != 0:
+            print(f"Error: T32_ExecuteScript for '{script_path}' failed with status {status}")
+        else:
+            print(f"T32_ExecuteScript for '{script_path}' successful.")
+        return status

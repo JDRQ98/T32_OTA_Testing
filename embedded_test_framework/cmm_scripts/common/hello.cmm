@@ -1,0 +1,3 @@
+; Simple CMM script for testing
+PRINT "Hello from hello.cmm script!"
+ENDDO 
