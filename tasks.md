@@ -1013,3 +1013,119 @@ Test:
         python run_tests.py tests/test_connection.py tests/test_cmm_execution.py (should run both).
 
     Verify the correct tests are run based on the arguments.
+
+
+Phase 6: Robust Connection Management & Usability Foundations
+Task 6.1: Add Connection Retry Logic to T32Connector
+Goal:
+Improve reliability by automatically retrying Trace32 connections a configurable number of times with delays.
+Action:
+Add max_retries and retry_delay parameters to T32Connector.connect().
+On connection failure, retry up to max_retries times, waiting retry_delay seconds between attempts.
+Log each attempt and final failure.
+Test:
+Simulate a failed connection (wrong port/IP) and verify retries and error messages.
+Simulate a delayed Trace32 startup and verify that a retry eventually succeeds.
+Task 6.2: Expose Connection Parameters via CLI
+Goal:
+Allow users (and CI/CD) to override connection parameters (IP, port, retries) from the command line.
+Action:
+Update run_tests.py to accept --node, --port, --max-retries, and --retry-delay arguments.
+These override values in global_settings.ini.
+Pass these values to the test fixture and T32Connector.
+Test:
+Run tests with CLI overrides and verify the correct parameters are used.
+Check that missing/invalid arguments are handled gracefully.
+Task 6.3: Add Connection Health Check Command
+Goal:
+Provide a simple CLI command to check if Trace32 is reachable (for both users and CI/CD).
+Action:
+Add a --check-connection flag to run_tests.py.
+When used, attempt to connect and disconnect, printing success/failure and exit code.
+No tests are run in this mode.
+Test:
+Run with --check-connection to a valid and invalid Trace32 instance and verify output and exit code.
+Task 6.4: Document Headless and Interactive Use
+Goal:
+Make it clear how to use the framework in both manual and CI/CD scenarios.
+Action:
+Update README.md with:
+Example headless (CI/CD) usage, including connection retries and health checks.
+Note on future GUI plans for interactive use.
+Test:
+Manual review of documentation for clarity and completeness.
+Task 6.5: GUI Planning and Initial Implementation
+
+    Start: Framework has robust connection management and CLI interface.
+
+    Action:
+        1. Create a new directory for GUI components:
+           ```
+           embedded_test_framework/
+           └── gui/
+               ├── __init__.py
+               ├── main_window.py
+               ├── connection_panel.py
+               └── test_panel.py
+           ```
+
+        2. Define GUI requirements:
+           - Connection management panel:
+             * IP/Port input fields
+             * Connection status indicator
+             * Connect/Disconnect buttons
+             * Retry settings
+           - Test execution panel:
+             * Test file/directory selection
+             * Test execution controls
+             * Test output display
+             * Test results summary
+           - Settings panel:
+             * DLL path configuration
+             * Default connection settings
+             * Logging options
+
+        3. Create basic GUI structure using tkinter:
+           - Main window with menu bar
+           - Tabbed interface for different panels
+           - Status bar for connection and test status
+           - Configuration persistence
+
+        4. Implement connection panel:
+           - Input validation
+           - Real-time connection status
+           - Error handling and user feedback
+           - Connection history
+
+        5. Add test execution features:
+           - Test file browser
+           - Test execution controls
+           - Real-time test output
+           - Test result visualization
+
+    End: Basic GUI structure with connection management and test execution capabilities.
+
+    Test:
+        1. Launch GUI and verify all panels load correctly
+        2. Test connection management:
+           - Enter valid/invalid connection details
+           - Verify connection status updates
+           - Test retry functionality
+        3. Test test execution:
+           - Select and run individual tests
+           - View test output
+           - Verify test results display
+        4. Test settings persistence:
+           - Save and load configuration
+           - Verify settings are maintained between sessions
+
+    Dependencies:
+        - Python 3.11 or later
+        - tkinter (included in Python standard library)
+        - Existing framework components
+
+    Notes:
+        - GUI should be optional (CLI remains primary interface)
+        - Focus on usability and error handling
+        - Consider future extensibility
+        - Maintain separation of concerns between GUI and core functionality
