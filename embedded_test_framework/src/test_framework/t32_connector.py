@@ -6,7 +6,7 @@ class T32Connector:
     def __init__(self, t32_api_path=None):
         self.t32_lib = None
         self.api_path = t32_api_path
-        self._is_connected = False  # Add connection status flag
+        self._is_connected = False
         self._load_t32_api()
 
     @property
@@ -15,20 +15,16 @@ class T32Connector:
 
     def _load_t32_api(self):
         if self.api_path:
-            # Try loading from the specified path
             try:
                 self.t32_lib = ctypes.cdll.LoadLibrary(self.api_path)
                 print(f"Successfully loaded T32 API from: {self.api_path}")
                 return
             except OSError as e:
                 print(f"Failed to load T32 API from {self.api_path}: {e}")
-                # Fall through to try system paths if specific path fails
-        
-        # Try common names if no path or specific path failed
         lib_names = []
-        if os.name == 'nt': # Windows
+        if os.name == 'nt':
             lib_names = ['t32api64.dll', 't32api.dll']
-        else: # Linux/macOS
+        else:
             lib_names = ['t32api.so']
 
         for lib_name in lib_names:
@@ -38,26 +34,15 @@ class T32Connector:
                 return
             except OSError:
                 continue
-        
+
         print("Error: Could not load Trace32 API library. Ensure it's in PATH or t32_api_path is correct.")
-        # raise OSError("Could not load Trace32 API library.") # Consider raising an error
 
     def connect(self, node="localhost", port="20000", max_retries=1, retry_delay=1.0):
-        """
-        Attempt to connect to Trace32, retrying on failure.
-        :param node: Trace32 node/IP
-        :param port: Trace32 API port
-        :param max_retries: Number of connection attempts (default 1 = no retry)
-        :param retry_delay: Delay in seconds between retries
-        :return: True if connected, False otherwise
-        """
         attempt = 0
         while attempt < max_retries:
             if not self.t32_lib:
                 print("T32 API library not loaded. Cannot connect.")
                 return False
-
-            # Define T32_Config prototype
             self.t32_lib.T32_Config.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
             self.t32_lib.T32_Config.restype = None
 
@@ -66,7 +51,6 @@ class T32Connector:
             self.t32_lib.T32_Config(b"PORT=", port.encode('ascii'))
             self.t32_lib.T32_Config(b"PACKLEN=", b"1024")
 
-            # Define T32_Init prototype
             self.t32_lib.T32_Init.argtypes = []
             self.t32_lib.T32_Init.restype = ctypes.c_int
 
@@ -82,12 +66,11 @@ class T32Connector:
                 continue
             print("T32_Init successful.")
 
-            # Define T32_Attach prototype
             self.t32_lib.T32_Attach.argtypes = [ctypes.c_int]
             self.t32_lib.T32_Attach.restype = ctypes.c_int
 
             print("Attaching to T32 API...")
-            status = self.t32_lib.T32_Attach(1)  # T32_ATTACH_API = 1
+            status = self.t32_lib.T32_Attach(1)
             if status != 0:
                 print(f"Error: T32_Attach failed with status {status}")
                 self._is_connected = False
@@ -111,7 +94,6 @@ class T32Connector:
             print("Not connected to T32. Nothing to disconnect.")
             return
 
-        # Define T32_Exit prototype
         self.t32_lib.T32_Exit.argtypes = []
         self.t32_lib.T32_Exit.restype = ctypes.c_int
 
@@ -140,7 +122,7 @@ class T32Connector:
             # Try to execute a simple CMM command (PRINT "Connection Test")
             cmd = b'PRINT "Connection Test"'
             status = self.t32_lib.T32_Cmd(cmd)
-            
+
             if status == 0:
                 print("Connection health check successful.")
                 return True
@@ -152,38 +134,37 @@ class T32Connector:
             return False
 
     def run_cmm_script(self, script_path: str, args: list = None) -> int:
-        """
-        Executes a CMM script.
-        :param script_path: Absolute or relative path to the .cmm script.
-                            T32 resolves relative paths based on its own CWD or settings.
-                            It's often best to provide absolute paths from Python.
-        :param args: A list of string arguments for the script.
-        :return: Status code from T32_ExecuteScript (0 for success).
-        """
+        """Executes a CMM script using T32_Cmd and the DO command."""
         if not self.is_connected:
             print("Error: Not connected to Trace32. Cannot execute script.")
-            return -1 # Or raise an exception
+            return -1
 
-        # T32_ExecuteScript(const char *pszPathName, const char *pszArgs[])
-        self.t32_lib.T32_ExecuteScript.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
-        self.t32_lib.T32_ExecuteScript.restype = ctypes.c_int
+        if not hasattr(self, 'T32_Cmd'):
+            self.T32_Cmd = self.t32_lib.T32_Cmd
+            self.T32_Cmd.argtypes = [ctypes.c_char_p]
+            self.T32_Cmd.restype = ctypes.c_int
 
-        script_path_bytes = script_path.encode('ascii')
-        
-        c_args = None
-        if args:
-            # Convert Python list of strings to C-style array of char pointers
-            c_args_arr = (ctypes.c_char_p * (len(args) + 1))() # +1 for NULL terminator
-            for i, arg in enumerate(args):
-                c_args_arr[i] = arg.encode('ascii')
-            c_args_arr[len(args)] = None # Null-terminate the array
-            c_args = c_args_arr
-        
-        print(f"Executing CMM script: {script_path} with args: {args}")
-        status = self.t32_lib.T32_ExecuteScript(script_path_bytes, c_args)
-        
-        if status != 0:
-            print(f"Error: T32_ExecuteScript for '{script_path}' failed with status {status}")
-        else:
-            print(f"T32_ExecuteScript for '{script_path}' successful.")
-        return status
+        try:
+            # Extract the directory from the script path
+            script_dir = os.path.dirname(script_path)
+            # Change Trace32 working directory
+            chdir_command = f'CD.FILE "{script_dir}"'.encode('ascii')  # CD.FILE changes working directory
+            print(f"Setting T32 working directory: {chdir_command.decode('ascii')}")
+            status = self.T32_Cmd(chdir_command)
+            if status != 0:
+                print(f"Error: Failed to set T32 working directory (status {status})")
+                return status # Abort if we can't set the directory
+
+            cmm_command = f'DO "{os.path.basename(script_path)}"' .encode('ascii') #DO with only file name
+            print(f"Executing CMM command: {cmm_command.decode('ascii')}")
+            status = self.T32_Cmd(cmm_command)
+
+            if status != 0:
+                print(f"Error: T32_Cmd failed with status {status}")
+            else:
+                print("CMM script execution initiated successfully.")
+            return status
+
+        except Exception as e:
+            print(f"Error executing CMM script: {e}")
+            return -1
