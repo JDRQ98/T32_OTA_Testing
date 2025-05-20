@@ -134,29 +134,25 @@ class T32Connector:
             return False
 
     def run_cmm_script(self, script_path: str, args: list = None) -> int:
-        """Executes a CMM script using T32_Cmd and the DO command."""
+        """
+        Executes a CMM script using T32_Cmd and the DO command.
+        """
         if not self.is_connected:
             print("Error: Not connected to Trace32. Cannot execute script.")
             return -1
 
+        # Define T32_Cmd prototype (ensure it's defined only once)
         if not hasattr(self, 'T32_Cmd'):
-            self.T32_Cmd = self.t32_lib.T32_Cmd
+            self.T32_Cmd = self.t32_lib.T32_Cmd  # Store the function pointer
             self.T32_Cmd.argtypes = [ctypes.c_char_p]
             self.T32_Cmd.restype = ctypes.c_int
 
         try:
-            # Extract the directory from the script path
-            script_dir = os.path.dirname(script_path)
-            # Change Trace32 working directory
-            chdir_command = f'CD.FILE "{script_dir}"'.encode('ascii')  # CD.FILE changes working directory
-            print(f"Setting T32 working directory: {chdir_command.decode('ascii')}")
-            status = self.T32_Cmd(chdir_command)
-            if status != 0:
-                print(f"Error: Failed to set T32 working directory (status {status})")
-                return status # Abort if we can't set the directory
-
-            cmm_command = f'DO "{os.path.basename(script_path)}"' .encode('ascii') #DO with only file name
+            # Construct the DO command
+            # IMPORTANT:  Enclose the script path in quotes!
+            cmm_command = f'DO "{script_path}"'.encode('ascii')
             print(f"Executing CMM command: {cmm_command.decode('ascii')}")
+
             status = self.T32_Cmd(cmm_command)
 
             if status != 0:
