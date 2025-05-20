@@ -10,15 +10,22 @@ def t32_session():
     
     try:
         cfg = load_config("global_settings.ini")
-        # Get values from config, with environment variable overrides
-        node = os.environ.get("T32_NODE", cfg.get('Trace32', 'node', fallback='localhost'))
-        port = os.environ.get("T32_PORT", cfg.get('Trace32', 'port', fallback='20000'))
+        
+        # Get values with proper priority:
+        # 1. Environment variables
+        # 2. Configuration file
+        node = os.environ.get("T32_NODE") or cfg.get('Trace32', 'node')
+        port = os.environ.get("T32_PORT") or cfg.get('Trace32', 'port')
+        
+        # Get API DLL path
         api_dll_path_cfg = cfg.get('Trace32', 'api_dll_path', fallback=None)
         t32_api_path = api_dll_path_cfg if api_dll_path_cfg and api_dll_path_cfg.strip() else None
         
         # Get retry parameters from environment or config
         max_retries = int(os.environ.get("T32_MAX_RETRIES", "1"))
         retry_delay = float(os.environ.get("T32_RETRY_DELAY", "1.0"))
+
+        print(f"Using connection settings: node={node}, port={port}")
 
     except Exception as e:
         pytest.fail(f"Failed to load configuration for t32_session: {e}")
