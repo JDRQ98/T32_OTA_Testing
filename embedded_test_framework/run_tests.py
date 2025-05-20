@@ -35,6 +35,9 @@ def check_connection(node, port, max_retries, retry_delay):
 if __name__ == "__main__":
     print("Starting test execution via run_tests.py...")
     
+    # Load configuration first
+    cfg = load_config("global_settings.ini")
+    
     parser = argparse.ArgumentParser(description="Run automated tests for embedded framework.")
     parser.add_argument(
         "test_path",
@@ -79,9 +82,12 @@ if __name__ == "__main__":
     if args.retry_delay is not None:
         os.environ["T32_RETRY_DELAY"] = str(args.retry_delay)
 
-    # Get connection parameters from args or environment
-    node = args.node or os.environ.get("T32_NODE", "localhost")
-    port = args.port or os.environ.get("T32_PORT", "20000")
+    # Get connection parameters with proper priority:
+    # 1. Command line arguments
+    # 2. Environment variables
+    # 3. Configuration file
+    node = args.node or os.environ.get("T32_NODE") or cfg.get('Trace32', 'node')
+    port = args.port or os.environ.get("T32_PORT") or cfg.get('Trace32', 'port')
     max_retries = args.max_retries or int(os.environ.get("T32_MAX_RETRIES", "1"))
     retry_delay = args.retry_delay or float(os.environ.get("T32_RETRY_DELAY", "1.0"))
 

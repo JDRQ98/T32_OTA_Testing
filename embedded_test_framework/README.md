@@ -14,7 +14,7 @@ A Python-based test automation framework for embedded systems using Trace32.
 
 1. Clone the repository:
 ```powershell
-git clone <repository-url>
+git clone https://github.com/JDRQ98/T32_OTA_Testing
 cd embedded_test_framework
 ```
 
