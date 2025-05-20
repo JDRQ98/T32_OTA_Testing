@@ -132,14 +132,14 @@ class T32Connector:
             print("Not connected to Trace32. Cannot check connection health.")
             return False
 
-        # Define T32_ExecuteFunction prototype
-        self.t32_lib.T32_ExecuteFunction.argtypes = [ctypes.c_char_p]
-        self.t32_ExecuteFunction.restype = ctypes.c_int
+        # Define T32_Cmd prototype
+        self.t32_lib.T32_Cmd.argtypes = [ctypes.c_char_p]
+        self.t32_lib.T32_Cmd.restype = ctypes.c_int
 
         try:
             # Try to execute a simple CMM command (PRINT "Connection Test")
             cmd = b'PRINT "Connection Test"'
-            status = self.t32_lib.T32_ExecuteFunction(cmd)
+            status = self.t32_lib.T32_Cmd(cmd)
             
             if status == 0:
                 print("Connection health check successful.")
